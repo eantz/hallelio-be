@@ -11,6 +11,11 @@ use Illuminate\Validation\ValidationException;
 class UserController extends Controller
 {
 
+    public function activeUser(Request $request)
+    {
+        return $request->user();
+    }
+
     public function list(Request $request)
     {
         $users = User::paginate(10);
@@ -61,8 +66,6 @@ class UserController extends Controller
             'name' => 'required',
             'email' => 'required|email',
         ]);
-
-
 
         if ($request->email != $user->email) {
             throw ValidationException::withMessages(['email' => 'Wrong user email']);

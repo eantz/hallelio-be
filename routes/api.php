@@ -12,6 +12,7 @@ Route::prefix('auth')->group(function () {
 
 Route::prefix('user')->middleware('auth:sanctum')->group(function () {
     Route::get('/list', [UserController::class, 'list']);
+    Route::get('/active-user', [UserController::class, 'activeUser']);
     Route::get('/{id}', [UserController::class, 'detail']);
     Route::post('/', [UserController::class, 'create']);
     Route::put('/{id}', [UserController::class, 'edit']);
