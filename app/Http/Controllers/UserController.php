@@ -53,7 +53,7 @@ class UserController extends Controller
 
 
 
-    public function edit(Request $request, string $id)
+    public function update(Request $request, string $id)
     {
 
         $user = User::find($id);

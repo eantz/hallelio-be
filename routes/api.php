@@ -16,11 +16,12 @@ Route::prefix('user')->middleware('auth:sanctum')->group(function () {
     Route::get('/active-user', [UserController::class, 'activeUser']);
     Route::get('/{id}', [UserController::class, 'detail']);
     Route::post('/', [UserController::class, 'create']);
-    Route::put('/{id}', [UserController::class, 'edit']);
+    Route::put('/{id}', [UserController::class, 'update']);
     Route::delete('/{id}', [UserController::class, 'delete']);
 });
 
 Route::prefix('member')->middleware('auth:sanctum')->group(function () {
     Route::get('/list', [MemberController::class, 'list']);
     Route::post('/', [MemberController::class, 'create']);
+    Route::put('/{id}', [MemberController::class, 'update']);
 });
