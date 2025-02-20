@@ -85,4 +85,19 @@ class MemberController extends Controller
 
         return $member;
     }
+
+    public function delete(Request $request, string $id)
+    {
+        $member = Member::find($id);
+
+        if (!$member) {
+            throw ValidationException::withMessages(['id' => 'Member not found']);
+        }
+
+        $member->delete();
+
+        return response()->json([
+            'message' => 'Success deleting member'
+        ]);
+    }
 }
