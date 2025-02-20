@@ -38,4 +38,25 @@ use Illuminate\Database\Eloquent\Model;
 class Member extends Model
 {
     use HasUuids;
+
+    protected $fillable = [
+        'first_name',
+        'last_name',
+        'birth_place',
+        'birth_date',
+        'address',
+        'phone_number',
+        'personal_id_number',
+        'picture',
+    ];
+
+    public function getPersonalIdNumberAttribute($value)
+    {
+        return $value ?? '';
+    }
+
+    public function getPictureAttribute($value)
+    {
+        return $value ?? '';
+    }
 }

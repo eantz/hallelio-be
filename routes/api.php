@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\MemberController;
 use App\Http\Controllers\UserController;
 
 Route::prefix('auth')->group(function () {
@@ -17,4 +18,9 @@ Route::prefix('user')->middleware('auth:sanctum')->group(function () {
     Route::post('/', [UserController::class, 'create']);
     Route::put('/{id}', [UserController::class, 'edit']);
     Route::delete('/{id}', [UserController::class, 'delete']);
+});
+
+Route::prefix('member')->middleware('auth:sanctum')->group(function () {
+    Route::get('/list', [MemberController::class, 'list']);
+    Route::post('/', [MemberController::class, 'create']);
 });

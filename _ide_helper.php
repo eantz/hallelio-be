@@ -22426,6 +22426,26 @@ namespace Illuminate\Http {
             }
     }
 
+namespace Illuminate\Validation {
+    /**
+     * 
+     *
+     */
+    class Rule {
+        /**
+         * 
+         *
+         * @see \Propaganistas\LaravelPhone\PhoneServiceProvider::registerValidator()
+         * @static 
+         */
+        public static function phone()
+        {
+            return \Illuminate\Validation\Rule::phone();
+        }
+
+            }
+    }
+
 
 namespace  {
     class App extends \Illuminate\Support\Facades\App {}
