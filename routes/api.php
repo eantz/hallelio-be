@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\MemberController;
+use App\Http\Controllers\UploadController;
 use App\Http\Controllers\UserController;
 
 Route::prefix('auth')->group(function () {
@@ -26,3 +27,5 @@ Route::prefix('member')->middleware('auth:sanctum')->group(function () {
     Route::put('/{id}', [MemberController::class, 'update']);
     Route::delete('/{id}', [MemberController::class, 'delete']);
 });
+
+Route::post('/upload', [UploadController::class, 'upload']);
