@@ -6,6 +6,8 @@ use App\Models\Member;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use chillerlan\QRCode\{QRCode, QROptions};
+use Illuminate\Support\Facades\Storage;
 
 class MemberController extends Controller
 {
@@ -50,6 +52,8 @@ class MemberController extends Controller
             'personal_id_number' => $validated['personal_id_number'],
             'picture' => $validated['picture']
         ]);
+
+        $qrcode = $this->generateQRCode($member);
 
         return $member;
     }
@@ -110,5 +114,33 @@ class MemberController extends Controller
         return response()->json([
             'message' => 'Success deleting member'
         ]);
+    }
+
+    public function regenerateQRCode(Request $request, string $id)
+    {
+        $member = Member::find($id);
+
+        if (!$member) {
+            throw ValidationException::withMessages(['id' => 'Member not found']);
+        }
+
+        $qrcode = $this->generateQRCode($member);
+
+        return response()->json([
+            'qr_code' => $member->qr_code
+        ]);
+    }
+
+    private function generateQRCode(Member $member)
+    {
+        $qrCodeString = config('app.name') . ':' . $member->id;
+        $qrcode = (new QRCode)->render($qrCodeString);
+
+        $image = str_replace('data:image/svg+xml;base64,', '', $qrcode);
+
+        $qrCodeFileName = $member->getQRCodeFileName();
+        Storage::disk('public')->put($qrCodeFileName, base64_decode($image));
+
+        return $qrCodeFileName;
     }
 }

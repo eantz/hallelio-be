@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
@@ -39,6 +40,8 @@ class Member extends Model
 {
     use HasUuids;
 
+    protected $appends = ['qr_code'];
+
     protected $fillable = [
         'first_name',
         'last_name',
@@ -58,5 +61,19 @@ class Member extends Model
     public function getPictureAttribute($value)
     {
         return $value ?? '';
+    }
+
+    protected function qrCode(): Attribute
+    {
+        return Attribute::make(
+            get: fn() => asset('/storage/' . $this->getQRCodeFileName()),
+        );
+    }
+
+    public function getQRCodeFileName()
+    {
+        $qrCodeFileName = 'qr-' . $this->id . '.svg';
+
+        return $qrCodeFileName;
     }
 }

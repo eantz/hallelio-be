@@ -27,6 +27,7 @@ Route::prefix('member')->middleware('auth:sanctum')->group(function () {
     Route::post('/', [MemberController::class, 'create']);
     Route::put('/{id}', [MemberController::class, 'update']);
     Route::delete('/{id}', [MemberController::class, 'delete']);
+    Route::post('/regenerate-qr-code/{id}', [MemberController::class, 'regenerateQRCode']);
 });
 
 Route::post('/upload', [UploadController::class, 'upload']);
