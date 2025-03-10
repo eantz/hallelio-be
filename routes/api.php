@@ -23,6 +23,7 @@ Route::prefix('user')->middleware('auth:sanctum')->group(function () {
 
 Route::prefix('member')->middleware('auth:sanctum')->group(function () {
     Route::get('/list', [MemberController::class, 'list']);
+    Route::get('/{id}', [MemberController::class, 'detail']);
     Route::post('/', [MemberController::class, 'create']);
     Route::put('/{id}', [MemberController::class, 'update']);
     Route::delete('/{id}', [MemberController::class, 'delete']);

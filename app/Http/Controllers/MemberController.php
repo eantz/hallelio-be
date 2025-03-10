@@ -16,6 +16,17 @@ class MemberController extends Controller
         return $members;
     }
 
+    public function detail(Request $request, string $id)
+    {
+        $member = Member::find($id);
+
+        if (!$member) {
+            throw ValidationException::withMessages(['id' => 'Member not found']);
+        }
+
+        return $member;
+    }
+
     public function create(Request $request)
     {
         $validated = $request->validate([

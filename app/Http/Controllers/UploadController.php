@@ -15,6 +15,12 @@ class UploadController extends Controller
         ]);
 
         $file = $request->file('file');
+        if ($file == null) {
+            return response()->json([
+                'message' => 'Error uploading file. File not found'
+            ], 500);
+        }
+
         $extension = $file->extension();
 
         $storedName = Str::uuid() . '.' . $extension;
