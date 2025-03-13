@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\EventController;
 use App\Http\Controllers\MemberController;
 use App\Http\Controllers\UploadController;
 use App\Http\Controllers\UserController;
@@ -28,6 +29,11 @@ Route::prefix('member')->middleware('auth:sanctum')->group(function () {
     Route::put('/{id}', [MemberController::class, 'update']);
     Route::delete('/{id}', [MemberController::class, 'delete']);
     Route::post('/regenerate-qr-code/{id}', [MemberController::class, 'regenerateQRCode']);
+});
+
+Route::prefix('event')->middleware('auth:sanctum')->group(function () {
+    Route::post('/', [EventController::class, 'create']);
+    Route::put('/{eventID}', [EventController::class, 'update']);
 });
 
 Route::post('/upload', [UploadController::class, 'upload']);

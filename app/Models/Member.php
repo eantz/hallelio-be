@@ -34,6 +34,7 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Member wherePhoneNumber($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Member wherePicture($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Member whereUpdatedAt($value)
+ * @property-read mixed $qr_code
  * @mixin \Eloquent
  */
 class Member extends Model
