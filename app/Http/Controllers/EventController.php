@@ -6,7 +6,7 @@ use App\Enums\EventType;
 use App\Models\Event;
 use App\Models\EventRecurrence;
 use App\Queries\EventQueries;
-use Carbon\Carbon;
+use Arr;
 use DB;
 use Exception;
 use Illuminate\Http\Request;
@@ -15,8 +15,6 @@ use Illuminate\Validation\ValidationException;
 
 class EventController extends Controller
 {
-
-
 
     public function list(Request $request)
     {
@@ -28,6 +26,20 @@ class EventController extends Controller
         $events = EventQueries::getEvents($validated['start_date'], $validated['end_date']);
 
         return response()->json($events);
+    }
+
+    public function detail(Request $request, string $id)
+    {
+        $validated = $request->validate([
+            'start_time' => 'required|date_format:Y-m-d H:i:s',
+            'end_time' => 'required|date_format:Y-m-d H:i:s|after:start_date'
+        ]);
+
+        $events = EventQueries::getEvents($validated['start_time'], $validated['end_time'], $id);
+
+        $event = Arr::first($events);
+
+        return response()->json($event);
     }
 
     public function create(Request $request)

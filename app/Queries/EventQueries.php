@@ -20,9 +20,9 @@ class EventQueries
         return $event_a_start->greaterThan($event_b_start) ? 1 :  -1;
     }
 
-    public static function getEvents($start_date, $end_date)
+    public static function getEvents($start_date, $end_date, $id = 0)
     {
-        $single_events = Event::from('events as e')
+        $q_single_events = Event::from('events as e')
             ->select(
                 'e.id',
                 'e.event_type',
@@ -35,8 +35,13 @@ class EventQueries
             ->where('is_recurring', false)
             ->where('is_exception', false)
             ->where('start_time', '>=', $start_date)
-            ->where('end_time', '<=', $end_date)
-            ->get();
+            ->where('end_time', '<=', $end_date);
+
+        if ($id != 0) {
+            $q_single_events = $q_single_events->where('id', $id);
+        }
+
+        $single_events = $q_single_events->get();
 
         $recurring_events = DB::select(sprintf('
                 SELECT e.id, e.event_type, 
@@ -82,6 +87,7 @@ class EventQueries
                             END DAY
                             ) = ee.start_time 
                 WHERE e.is_recurring = 1 
+                    %s 
                     AND DATE_ADD(e.start_time,
                         INTERVAL n.num *	
                         CASE
@@ -94,7 +100,7 @@ class EventQueries
                         ee.exception_is_removed is null or
                         ee.exception_is_removed = 0
                     )
-        ', $start_date, $end_date));
+        ', $id != 0 ? 'AND e.id=' . $id : '', $start_date, $end_date));
 
         $events = [];
 

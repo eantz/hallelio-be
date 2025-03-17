@@ -33,6 +33,7 @@ Route::prefix('member')->middleware('auth:sanctum')->group(function () {
 
 Route::prefix('event')->middleware('auth:sanctum')->group(function () {
     Route::get('/list', [EventController::class, 'list']);
+    Route::get('/{id}', [EventController::class, 'detail']);
     Route::post('/', [EventController::class, 'create']);
     Route::put('/{eventID}', [EventController::class, 'update']);
 });
