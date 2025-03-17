@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Enums\EventType;
 use App\Models\Event;
 use App\Models\EventRecurrence;
+use App\Queries\EventQueries;
+use Carbon\Carbon;
 use DB;
 use Exception;
 use Illuminate\Http\Request;
@@ -13,6 +15,20 @@ use Illuminate\Validation\ValidationException;
 
 class EventController extends Controller
 {
+
+
+
+    public function list(Request $request)
+    {
+        $validated = $request->validate([
+            'start_date' => 'required|date_format:Y-m-d',
+            'end_date' => 'required|date_format:Y-m-d|after:start_date'
+        ]);
+
+        $events = EventQueries::getEvents($validated['start_date'], $validated['end_date']);
+
+        return response()->json($events);
+    }
 
     public function create(Request $request)
     {
