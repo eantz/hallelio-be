@@ -15,7 +15,6 @@ use Illuminate\Validation\ValidationException;
 
 class EventController extends Controller
 {
-
     public function list(Request $request)
     {
         $validated = $request->validate([
@@ -25,7 +24,7 @@ class EventController extends Controller
 
         $events = EventQueries::getEvents($validated['start_date'], $validated['end_date']);
 
-        return response()->json($events);
+        return response()->json(['data' => $events]);
     }
 
     public function detail(Request $request, string $id)
