@@ -36,6 +36,7 @@ Route::prefix('event')->middleware('auth:sanctum')->group(function () {
     Route::get('/{id}', [EventController::class, 'detail']);
     Route::post('/', [EventController::class, 'create']);
     Route::put('/{eventID}', [EventController::class, 'update']);
+    Route::delete('/{id}', [EventController::class, 'delete']);
 });
 
 Route::post('/upload', [UploadController::class, 'upload']);

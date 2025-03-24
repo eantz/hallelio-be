@@ -88,8 +88,6 @@ class EventController extends Controller
             $recurrence = EventRecurrence::where('event_id', $event['is_exception'] ? $event['exception_event_id'] : $event['id'])
                 ->first();
 
-            \Log::info($recurrence);
-
             if ($recurrence) {
                 $event['recurrence'] = [
                     'recurrence_type' => $recurrence->recurrence_type,
@@ -397,6 +395,131 @@ class EventController extends Controller
             $event->load('recurrence');
 
             return $event;
+        }
+    }
+
+    public function delete(Request $request, string $eventID)
+    {
+        $event = Event::with(['recurrence'])->find($eventID);
+
+        if (!$event) {
+            throw ValidationException::withMessages(['id' => 'Event not found']);
+        }
+
+        $validated = $request->validate([
+            'mode' => [
+                Rule::requiredIf($event->is_recurring),
+                Rule::in(['this', 'this_and_following'])
+            ],
+            'selected_start_time' => [
+                Rule::requiredIf($request->input('mode') !== null),
+                'date_format:Y-m-d H:i:s,Y-m-d H:i',
+            ],
+            'selected_end_time' => [
+                Rule::requiredIf($request->input('mode') !== null),
+                'date_format:Y-m-d H:i:s,Y-m-d H:i',
+                'after:selected_start_time'
+            ]
+        ]);
+
+        if (array_key_exists('mode', $validated)) {
+
+            if ($validated['mode'] == 'this') {
+
+                if ($event['is_exception']) {
+                    // if already exception, just update the exception
+
+                    DB::table('events')
+                        ->where('id', $event['exception_id'])
+                        ->update([
+                            'exception_is_removed' => true
+                        ]);
+
+                    return response([
+                        'message' => 'Success deleting event'
+                    ]);
+                } else {
+                    // if only delete 1 event, create an exception
+
+                    Event::create([
+                        'event_type' => $event['event_type'],
+                        'title' => '',
+                        'description' => '',
+                        'location' => '',
+                        'start_time' => null,
+                        'end_time' => null,
+                        'is_recurring' => false,
+                        'is_exception' => true,
+                        'exception_event_id' => $event['id'],
+                        'exception_time' => $validated['selected_start_time'],
+                        'exception_is_removed' => true,
+                    ]);
+
+                    return response([
+                        'message' => 'Success deleting event'
+                    ]);
+                }
+            } else if ($validated['mode'] == 'this_and_following') {
+                // if delete more than one event
+
+                if ($event['num'] == 0) {
+                    // if this is the first event, then delete all event, including the recurring
+
+                    DB::beginTransaction();
+
+                    DB::table('event_recurrences')
+                        ->where('event_id', $event['id'])
+                        ->delete();
+
+                    DB::table('events')
+                        ->where('exception_event_id', $event['id'])
+                        ->delete();
+
+                    DB::table('events')
+                        ->where('id', $event['id'])
+                        ->delete();
+
+                    DB::commit();
+
+                    return response([
+                        'message' => 'Success deleting event'
+                    ]);
+                } else {
+                    // if not the first event
+
+
+                    DB::beginTransaction();
+
+                    // update recurring end date to D-1
+                    $new_end_time = new Carbon($event['start_time'])->subDay();
+
+                    DB::table('event_recurrences')
+                        ->where('event_id', $event['id'])
+                        ->update([
+                            'end_date' => $new_end_time,
+                            'updated_at' => Carbon::now()
+                        ]);
+
+
+                    // delete exceptions dated after selected date
+                    $original_start_time = new Carbon($event['start_time']);
+                    $original_exceptions = Event::where('exception_event_id', $eventID)
+                        ->where('exception_start_time', '>', $original_start_time)
+                        ->delete();
+
+                    DB::commit();
+
+                    return response([
+                        'message' => 'Success deleting event'
+                    ]);
+                }
+            }
+        } else {
+            $event->delete();
+
+            return response([
+                'message' => 'Success deleting event'
+            ]);
         }
     }
 }
