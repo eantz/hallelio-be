@@ -22,6 +22,7 @@ return new class extends Migration
             $table->boolean('is_recurring')->default(false);
             $table->boolean('is_exception')->default(false);
             $table->foreignId('exception_event_id')->nullable()->default(null);
+            $table->timestamp('exception_time')->nullable()->default(null);
             $table->boolean('exception_is_removed')->nullable()->default(null);
             $table->timestamps();
 

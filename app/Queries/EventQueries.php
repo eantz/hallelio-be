@@ -22,8 +22,13 @@ class EventQueries
 
     public static function getEvents($start_date, $end_date, $id = 0)
     {
-        $start_date .= ' 00:00:00';
-        $end_date .= ' 23:59:59';
+        if (!str_contains($start_date, ':')) {
+            $start_date .= ' 00:00:00';
+        }
+
+        if (!str_contains($end_date, ':')) {
+            $end_date .= ' 23:59:59';
+        }
 
         $q_single_events = Event::from('events as e')
             ->select(
@@ -33,7 +38,10 @@ class EventQueries
                 'e.description',
                 'e.location',
                 'e.start_time',
-                'e.end_time'
+                'e.end_time',
+                'e.is_recurring',
+                'e.is_exception',
+                'e.exception_event_id'
             )
             ->where('is_recurring', false)
             ->where('is_exception', false)
@@ -47,63 +55,73 @@ class EventQueries
         $single_events = $q_single_events->get();
 
         $recurring_events = DB::select(sprintf('
-            SELECT e.id, e.event_type, 
-                COALESCE(ee.title, e.title) AS title, 
-                COALESCE(ee.description, e.description) AS description, 
-                COALESCE(ee.location, e.location) AS location,
-                DATE_ADD(
-                    COALESCE(ee.start_time, e.start_time),
-                    INTERVAL n.num *
-                        CASE
-                            WHEN r.recurrence_type = "daily" THEN 1
-                            WHEN r.recurrence_type = "weekly" THEN 7
-                            WHEN r.recurrence_type = "monthly" THEN 30
-                        END DAY
-                ) AS start_time, 
-                DATE_ADD(
-                    COALESCE(ee.start_time, e.end_time),
-                    INTERVAL n.num *
-                        CASE
-                            WHEN r.recurrence_type = "daily" THEN 1
-                            WHEN r.recurrence_type = "weekly" THEN 7
-                            WHEN r.recurrence_type = "monthly" THEN 30
-                        END DAY
-                ) AS end_time 
-            FROM events AS e 
-            INNER JOIN event_recurrences AS r 
-                ON e.id = r.event_id 
-            INNER JOIN numbers AS n 
-                ON n.num *
-                    CASE
-                        WHEN r.recurrence_type = "daily" THEN 1
-                        WHEN r.recurrence_type = "weekly" THEN 7
-                        WHEN r.recurrence_type = "monthly" THEN 30
-                    END <= DATEDIFF(r.end_date, r.start_date) 
-            LEFT JOIN events AS ee 
-                ON e.id = ee.exception_event_id 
-                    AND DATE_ADD(e.start_time,
+            SELECT COALESCE(ee.id, rd.id) AS id,
+                rd.event_type,
+                COALESCE(ee.title, rd.title) AS title,
+                COALESCE(ee.description, rd.description) AS description,
+                COALESCE(ee.location, rd.location) AS location,
+                COALESCE(ee.start_time, rd.start_time) AS start_time,
+                COALESCE(ee.end_time, rd.end_time) AS end_time,
+                COALESCE(ee.is_recurring, rd.is_recurring) AS is_recurring,
+                COALESCE(ee.is_exception, rd.is_exception) AS is_exception,
+                COALESCE(ee.exception_event_id, rd.exception_event_id) AS exception_event_id,
+                rd.num AS num
+            FROM (
+                SELECT e.id,
+                    e.event_type,
+                    e.title,
+                    e.description,
+                    e.location,
+                    DATE_ADD(
+                        e.start_time,
                         INTERVAL n.num *
+                            CASE
+                                WHEN r.recurrence_type = "daily" THEN 1
+                                WHEN r.recurrence_type = "weekly" THEN 7
+                                WHEN r.recurrence_type = "monthly" THEN 30
+                            END DAY
+                    ) AS start_time,
+                    DATE_ADD(
+                        e.end_time,
+                        INTERVAL n.num *
+                            CASE
+                                WHEN r.recurrence_type = "daily" THEN 1
+                                WHEN r.recurrence_type = "weekly" THEN 7
+                                WHEN r.recurrence_type = "monthly" THEN 30
+                            END DAY
+                    ) AS end_time,
+                    e.is_recurring,
+                    e.is_exception,
+                    e.exception_event_id,
+                    n.num AS num
+                FROM events AS e
+                INNER JOIN event_recurrences AS r
+                    ON e.id = r.event_id
+                INNER JOIN numbers AS n
+                    ON n.num *
                         CASE
                             WHEN r.recurrence_type = "daily" THEN 1
                             WHEN r.recurrence_type = "weekly" THEN 7
                             WHEN r.recurrence_type = "monthly" THEN 30
-                        END DAY
-                        ) = ee.start_time 
-            WHERE e.is_recurring = 1 
-                %s 
-                AND DATE_ADD(e.start_time,
-                    INTERVAL n.num *	
-                    CASE
-                        WHEN r.recurrence_type = "daily" THEN 1
-                        WHEN r.recurrence_type = "weekly" THEN 7
-                        WHEN r.recurrence_type = "monthly" THEN 30
-                    END DAY
-                ) BETWEEN "%s" AND "%s" 
-                AND (
-                    ee.exception_is_removed is null or
-                    ee.exception_is_removed = 0
+                        END <= DATEDIFF(r.end_date, r.start_date)
+                WHERE e.is_recurring = TRUE 
+                    AND e.is_exception = FALSE
+                    %s 
+            ) AS rd
+            LEFT JOIN events AS ee
+                ON rd.id = ee.exception_event_id
+                    AND (
+                        DATE(rd.start_time) = DATE(ee.exception_time)
+                    )
+            WHERE (
+                    rd.start_time BETWEEN "%s" AND "%s"
+                    OR ee.start_time BETWEEN "%s" AND "%s"
                 )
-        ', $id != 0 ? 'AND e.id=' . $id : '', $start_date, $end_date));
+                AND (
+                    ee.exception_is_removed IS NULL 
+                    OR ee.exception_is_removed = FALSE
+                )
+        ', $id != 0 ? 'AND e.id=' . $id : '', $start_date, $end_date, $start_date, $end_date));
 
         $events = [];
 
@@ -115,19 +133,27 @@ class EventQueries
                 'description' => $e->description,
                 'location' => $e->location,
                 'start_time' => $e->start_time,
-                'end_time' => $e->end_time
+                'end_time' => $e->end_time,
+                'is_recurring' => $e->is_recurring,
+                'is_exception' => $e->is_exception,
+                'exception_id' => null,
+                'num' => 0
             ];
         }
 
         foreach ($recurring_events as $e) {
             $events[] = [
-                'id' => $e->id,
+                'id' => $e->exception_event_id != null ? $e->exception_event_id : $e->id,
                 'event_type' => $e->event_type,
                 'title' => $e->title,
                 'description' => $e->description,
                 'location' => $e->location,
                 'start_time' => $e->start_time,
-                'end_time' => $e->end_time
+                'end_time' => $e->end_time,
+                'is_recurring' => $e->is_recurring,
+                'is_exception' => $e->is_exception,
+                'exception_id' => $e->exception_event_id !== null ? $e->id : null,
+                'num' => $e->num
             ];
         }
 

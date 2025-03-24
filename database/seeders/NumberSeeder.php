@@ -13,7 +13,7 @@ class NumberSeeder extends Seeder
      */
     public function run(): void
     {
-        for ($i = 1; $i <= 1000; $i++) {
+        for ($i = 0; $i <= 1000; $i++) {
             DB::table('numbers')->insert([
                 'num' => $i
             ]);

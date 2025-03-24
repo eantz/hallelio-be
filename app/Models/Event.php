@@ -57,7 +57,9 @@ class Event extends Model
         'is_recurring',
         'is_exception',
         'exception_event_id',
-        'exception_is_removed'
+        'exception_time',
+        'exception_is_removed',
+        'updated_at'
     ];
 
     public function recurrence(): HasOne
