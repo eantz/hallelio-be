@@ -238,7 +238,6 @@ class EventController extends Controller
                     return $updated_event;
                 } else {
 
-
                     try {
                         DB::beginTransaction();
 
@@ -277,6 +276,27 @@ class EventController extends Controller
                                 $new_event->recurrence()->save($recurrence);
                             }
 
+                            $original_start_time = new Carbon($event['start_time']);
+                            $original_exceptions = Event::where('exception_event_id', $eventID)->get();
+
+                            if ($original_exceptions->count() > 0) {
+
+                                $day_diff = $original_start_time->diffInDays($validated['start_time']);
+
+                                if ($day_diff != 0) {
+                                    foreach ($original_exceptions as $event_exception) {
+                                        $original_exception_time = new Carbon($event_exception->exception_time);
+                                        if ($original_exception_time->gt($new_end_time)) {
+
+                                            $event_exception->exception_time = $original_exception_time->addDays($day_diff);
+                                            $event_exception->exception_event_id = $new_event->id;
+                                            $event_exception->save();
+                                        }
+                                    }
+                                }
+                            }
+
+
                             DB::commit();
 
                             $new_event->load('recurrence');
@@ -286,14 +306,17 @@ class EventController extends Controller
                             // if event is the first event
 
                             $event_to_update = Event::where('id', $eventID)->first();
-                            $event_to_update->update([
-                                'title' => $validated['title'],
-                                'description' => $validated['description'],
-                                'location' => $validated['location'],
-                                'start_time' => $validated['start_time'],
-                                'end_time' => $validated['end_time'],
-                                'updated_at' => Carbon::now()
-                            ]);
+
+                            $original_start_time = new Carbon($event_to_update->getOriginal('start_time'));
+
+                            $event_to_update->title = $validated['title'];
+                            $event_to_update->description = $validated['description'];
+                            $event_to_update->location = $validated['location'];
+                            $event_to_update->start_time = $validated['start_time'];
+                            $event_to_update->end_time = $validated['end_time'];
+                            $event_to_update->updated_at = Carbon::now();
+
+                            $event_to_update->save();
 
                             $event_to_update->recurrence()->update([
                                 'recurrence_type' => $validated['recurrence']['recurrence_type'],
@@ -301,6 +324,21 @@ class EventController extends Controller
                                 'end_date' => $validated['recurrence']['end_date'],
                                 'interval' => $validated['recurrence']['interval'],
                             ]);
+
+                            $exceptions = Event::where('exception_event_id', $eventID)->get();
+
+                            if ($exceptions->count() > 0 && $event_to_update->wasChanged('start_time')) {
+                                $day_diff = $original_start_time->diffInDays($event_to_update->start_time);
+
+                                if ($day_diff != 0) {
+                                    foreach ($exceptions as $event_exception) {
+                                        $original_exception_time = new Carbon($event_exception->exception_time);
+                                        $event_exception->exception_time = $original_exception_time->addDays($day_diff);
+                                        $event_exception->save();
+                                    }
+                                }
+                            }
+
 
                             DB::commit();
 
