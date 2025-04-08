@@ -133,7 +133,7 @@ class MemberController extends Controller
 
     private function generateQRCode(Member $member)
     {
-        $qrCodeString = config('app.name') . ':' . $member->id;
+        $qrCodeString = $member->generateQRCodeValue();
         $qrcode = (new QRCode)->render($qrCodeString);
 
         $image = str_replace('data:image/svg+xml;base64,', '', $qrcode);

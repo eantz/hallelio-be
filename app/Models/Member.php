@@ -77,4 +77,14 @@ class Member extends Model
 
         return $qrCodeFileName;
     }
+
+    public function generateQRCodeValue()
+    {
+        return config('app.name') . ':' . $this->id;
+    }
+
+    protected function getMemberIDFromQRCodeValue($value)
+    {
+        return str_replace(config('app.name') . ':', '', $value);
+    }
 }

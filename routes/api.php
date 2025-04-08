@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AttendanceController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
@@ -37,6 +38,12 @@ Route::prefix('event')->middleware('auth:sanctum')->group(function () {
     Route::post('/', [EventController::class, 'create']);
     Route::put('/{eventID}', [EventController::class, 'update']);
     Route::delete('/{id}', [EventController::class, 'delete']);
+    Route::post('/occurence/register', [EventController::class, 'registerEventOccurence']);
+    Route::get('/occurence/{id}', [EventController::class, 'getEventOccurence']);
+});
+
+Route::prefix('attendance')->middleware('auth:sanctum')->group(function () {
+    Route::post('/register', [AttendanceController::class, 'registerAttendance']);
 });
 
 Route::post('/upload', [UploadController::class, 'upload']);

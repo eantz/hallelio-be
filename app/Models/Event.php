@@ -71,4 +71,9 @@ class Event extends Model
     {
         return $this->hasMany(Event::class, 'exception_event_id');
     }
+
+    public function occurences(): HasMany
+    {
+        return $this->hasMany(EventOccurence::class);
+    }
 }
