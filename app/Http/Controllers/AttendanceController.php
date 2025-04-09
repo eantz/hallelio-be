@@ -27,6 +27,11 @@ class AttendanceController extends Controller
         if (isset($validated['member_id'])) {
             $member_id = Member::getMemberIDFromQRCodeValue($validated['member_id']);
 
+            $member = Member::where('id', $member_id)->first();
+            if (!$member) {
+                return response()->json(['error' => 'QR Code Not Detected'], 422);
+            }
+
             $existing_attendance = Attendance::where('event_occurence_id', $validated['event_occurence_id'])
                 ->where('member_id', $member_id)
                 ->first();
