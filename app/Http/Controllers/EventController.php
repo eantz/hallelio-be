@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\EventType;
 use App\Models\Event;
+use App\Models\EventOccurence;
 use App\Models\EventRecurrence;
 use App\Queries\EventQueries;
 use Arr;
@@ -521,5 +522,42 @@ class EventController extends Controller
                 'message' => 'Success deleting event'
             ]);
         }
+    }
+
+    public function registerEventOccurence(Request $request)
+    {
+        $validated = $request->validate([
+            'event_id' => 'required|numeric',
+            'occurence_time' => 'required|date_format:Y-m-d H:i:s,Y-m-d H:i',
+        ]);
+
+        $existing_event_occurence = EventOccurence::where('event_id', $validated['event_id'])
+            ->where('occurence_time', $validated['occurence_time'])
+            ->first();
+
+        if ($existing_event_occurence) {
+            return $existing_event_occurence;
+        }
+
+        $event_occurence = EventOccurence::create([
+            'event_id' => $validated['event_id'],
+            'occurence_time' => $validated['occurence_time'],
+        ]);
+
+        return $event_occurence;
+    }
+
+    function getEventOccurence(Request $request, string $id)
+    {
+
+        $event_occurence = EventOccurence::where('id', $id)
+            ->with(['event'])
+            ->first();
+
+        if (!$event_occurence) {
+            return response(['message' => 'Event Occurence not found'], 404);
+        }
+
+        return $event_occurence;
     }
 }
