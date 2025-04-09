@@ -42,6 +42,8 @@ class AttendanceController extends Controller
             }
 
             $attendance_data['member_id'] = $member_id;
+        } else {
+            $attendance_data['guest_name'] = $validated['guest_name'];
         }
 
         $attendance = Attendance::create($attendance_data);
