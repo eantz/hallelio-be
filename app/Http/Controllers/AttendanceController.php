@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Attendance;
+use App\Models\EventOccurence;
 use App\Models\Member;
 use Illuminate\Http\Request;
 
@@ -51,5 +52,32 @@ class AttendanceController extends Controller
         $attendance->load('member');
 
         return $attendance;
+    }
+
+    public function getAttendances(Request $request)
+    {
+        $validated = $request->validate([
+            'event_id' => 'required|numeric',
+            'start_time' => 'required|date_format:Y-m-d H:i:s'
+        ]);
+
+        $occurence = EventOccurence::where('event_id', $validated['event_id'])
+            ->where('start_time', $validated['start_time'])
+            ->first();
+
+        if (!$occurence) {
+            return response()->json(['error' => 'Event Occurence Not Found'], 422);
+        }
+
+        $attendances = Attendance::where('event_occurence_id', $occurence->id)
+            ->with('member')
+            ->get();
+
+        $occurence->load('event');
+
+        return response()->json([
+            'event' => $occurence->event,
+            'attendances' => $attendances,
+        ]);
     }
 }

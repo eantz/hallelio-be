@@ -30,7 +30,7 @@ class EventQueries
             $end_date .= ' 23:59:59';
         }
 
-        $q_single_events = Event::from('events as e')
+        $q_single_events = Event::from('events AS e')
             ->select(
                 'e.id',
                 'e.event_type',
@@ -41,8 +41,13 @@ class EventQueries
                 'e.end_time',
                 'e.is_recurring',
                 'e.is_exception',
-                'e.exception_event_id'
+                'e.exception_event_id',
+                'eo.id AS event_occurence_id'
             )
+            ->leftJoin('event_occurences AS eo', function ($join) {
+                $join->on('e.id', '=', 'eo.event_id')
+                    ->whereRaw('DATE(e.start_time) = DATE(eo.occurence_time)');
+            })
             ->where('is_recurring', false)
             ->where('is_exception', false)
             ->where('start_time', '>=', $start_date)
@@ -53,6 +58,11 @@ class EventQueries
         }
 
         $single_events = $q_single_events->get();
+
+        $add_id_filter = $id != 0 ? 'AND e.id=' . $id : '';
+
+        DB::statement('SET @start_date = ?', [$start_date]);
+        DB::statement('SET @end_date = ?', [$end_date]);
 
         $recurring_events = DB::select(sprintf('
             SELECT COALESCE(ee.id, rd.id) AS id,
@@ -65,6 +75,7 @@ class EventQueries
                 COALESCE(ee.is_recurring, rd.is_recurring) AS is_recurring,
                 COALESCE(ee.is_exception, rd.is_exception) AS is_exception,
                 COALESCE(ee.exception_event_id, rd.exception_event_id) AS exception_event_id,
+                eo.id AS event_occurence_id,
                 rd.num AS num
             FROM (
                 SELECT e.id,
@@ -103,25 +114,60 @@ class EventQueries
                             WHEN r.recurrence_type = "daily" THEN 1
                             WHEN r.recurrence_type = "weekly" THEN 7
                             WHEN r.recurrence_type = "monthly" THEN 30
-                        END <= DATEDIFF(r.end_date, r.start_date)
-                WHERE e.is_recurring = TRUE 
+                            END <= DATEDIFF(r.end_date, r.start_date)
+                WHERE e.is_recurring = TRUE
                     AND e.is_exception = FALSE
-                    %s 
+                    %s
             ) AS rd
             LEFT JOIN events AS ee
                 ON rd.id = ee.exception_event_id
-                    AND (
-                        DATE(rd.start_time) = DATE(ee.exception_time)
-                    )
-            WHERE (
-                    rd.start_time BETWEEN "%s" AND "%s"
-                    OR ee.start_time BETWEEN "%s" AND "%s"
-                )
                 AND (
-                    ee.exception_is_removed IS NULL 
+                    DATE(rd.start_time) = DATE(ee.exception_time)
+                )
+            LEFT JOIN event_occurences AS eo
+                ON COALESCE(ee.exception_event_id, rd.id) = eo.event_id
+                AND DATE(COALESCE(ee.start_time, rd.start_time)) = DATE(eo.occurence_time)
+            WHERE rd.start_time BETWEEN @start_date AND @end_date
+                AND (
+                    ee.id IS NULL 
+                    OR (
+                        (
+                            ee.exception_is_removed IS NULL
+                            OR ee.exception_is_removed = FALSE
+                        )
+                        AND 
+                        ee.start_time between @start_date AND @end_date
+                    )
+                    
+                )
+            UNION
+            SELECT 
+                e.id,
+                e.event_type,
+                ee.title,
+                ee.description,
+                ee.location,
+                ee.start_time,
+                ee.end_time,
+                e.is_recurring,
+                ee.is_exception,
+                ee.exception_event_id,
+                eo.id AS event_occurence_id,
+                0 as num
+            FROM events e
+            JOIN events ee ON e.id = ee.exception_event_id 
+            LEFT JOIN event_occurences AS eo
+                ON ee.exception_event_id = eo.event_id
+                AND DATE(ee.start_time) = DATE(eo.occurence_time)
+            WHERE 
+                ee.exception_time NOT BETWEEN @start_date AND @end_date
+                AND ee.start_time BETWEEN @start_date AND @end_date
+                AND (
+                    ee.exception_is_removed IS NULL
                     OR ee.exception_is_removed = FALSE
                 )
-        ', $id != 0 ? 'AND e.id=' . $id : '', $start_date, $end_date, $start_date, $end_date));
+                %s
+        ', $add_id_filter, $add_id_filter));
 
         $events = [];
 
@@ -137,6 +183,7 @@ class EventQueries
                 'is_recurring' => $e->is_recurring,
                 'is_exception' => $e->is_exception,
                 'exception_id' => null,
+                'event_occurence_id' => $e->event_occurence_id,
                 'num' => 0
             ];
         }
@@ -153,6 +200,7 @@ class EventQueries
                 'is_recurring' => $e->is_recurring,
                 'is_exception' => $e->is_exception,
                 'exception_id' => $e->exception_event_id !== null ? $e->id : null,
+                'event_occurence_id' => $e->event_occurence_id,
                 'num' => $e->num
             ];
         }
