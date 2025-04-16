@@ -57,13 +57,21 @@ class AttendanceController extends Controller
     public function getAttendances(Request $request)
     {
         $validated = $request->validate([
-            'event_id' => 'required|numeric',
-            'start_time' => 'required|date_format:Y-m-d H:i:s'
+            'event_occurence_id' => 'numeric|nullable',
+            'event_id' => 'required_without:event_occurence_id|numeric',
+            'start_time' => 'required_without:event_occurence_id|date_format:Y-m-d H:i:s'
         ]);
 
-        $occurence = EventOccurence::where('event_id', $validated['event_id'])
-            ->where('start_time', $validated['start_time'])
-            ->first();
+        $occurence = null;
+
+        if (isset($validated['event_occurence_id'])) {
+            $occurence = EventOccurence::where('id', $validated['event_occurence_id'])
+                ->first();
+        } else {
+            $occurence = EventOccurence::where('event_id', $validated['event_id'])
+                ->where('start_time', $validated['start_time'])
+                ->first();
+        }
 
         if (!$occurence) {
             return response()->json(['error' => 'Event Occurence Not Found'], 422);
@@ -71,7 +79,7 @@ class AttendanceController extends Controller
 
         $attendances = Attendance::where('event_occurence_id', $occurence->id)
             ->with('member')
-            ->get();
+            ->paginate(10);
 
         $occurence->load('event');
 

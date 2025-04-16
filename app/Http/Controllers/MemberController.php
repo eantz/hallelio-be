@@ -13,7 +13,23 @@ class MemberController extends Controller
 {
     public function list(Request $request)
     {
-        $members = Member::paginate(10);
+        $validated = $request->validate([
+            'name' => 'string|nullable'
+        ]);
+
+        $members = null;
+
+        if (isset($validated['name'])) {
+            $members = Member::where('first_name', 'like', $validated['name'] . '%')
+                ->orWhere('last_name', 'like', $validated['name'] . '%');
+        }
+
+        if ($members == null) {
+            $members = Member::paginate(10);
+        } else {
+            $members = $members->paginate(10);
+        }
+
 
         return $members;
     }
