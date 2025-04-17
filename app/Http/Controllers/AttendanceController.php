@@ -3,12 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Models\Attendance;
+use App\Models\EventOccurence;
 use App\Models\Member;
+use App\Queries\EventQueries;
+use Arr;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class AttendanceController extends Controller
 {
-    public function registerAttendance(Request $request)
+    public function register(Request $request)
     {
         $validated = $request->validate([
             'event_occurence_id' => 'required|numeric',
@@ -51,5 +56,93 @@ class AttendanceController extends Controller
         $attendance->load('member');
 
         return $attendance;
+    }
+
+    function update(Request $request, string $id)
+    {
+        $validated = $request->validate([
+            'event_occurence_id' => 'required|numeric',
+            'attendance_type' => 'required|string|max:20',
+            'member_id' => 'nullable|string',
+            'guest_name' => 'required_without:member_id|nullable|string|max:255',
+            'attended_at' => 'required|date_format:Y-m-d H:i:s',
+        ]);
+
+        $attendance = Attendance::where('event_occurence_id', $validated['event_occurence_id'])
+            ->where('id', $id)
+            ->first();
+
+        if (!$attendance) {
+            return response(['message' => 'Attendance not found'], 404);
+        }
+
+        $attendance->member_id = $validated['member_id'];
+        $attendance->guest_name = $validated['guest_name'];
+        $attendance->attended_at = $validated['attended_at'];
+        $attendance->save();
+
+        $attendance->load('member');
+
+        return response()->json($attendance);
+    }
+
+    public function list(Request $request)
+    {
+        $validated = $request->validate([
+            'event_occurence_id' => 'numeric|nullable',
+            'event_id' => 'required_without:event_occurence_id|numeric',
+            'start_time' => 'required_without:event_occurence_id|date_format:Y-m-d H:i:s',
+            'sort' => [
+                'nullable',
+                Rule::in(['asc', 'desc'])
+            ]
+        ]);
+
+        $occurence = null;
+
+        if (isset($validated['event_occurence_id'])) {
+            $occurence = EventOccurence::where('id', $validated['event_occurence_id'])
+                ->first();
+        } else {
+            $occurence = EventOccurence::where('event_id', $validated['event_id'])
+                ->where('start_time', $validated['start_time'])
+                ->first();
+        }
+
+        if (!$occurence) {
+            return response()->json(['error' => 'Event Occurence Not Found'], 422);
+        }
+
+        $attendances = Attendance::where('event_occurence_id', $occurence->id)
+            ->with('member')
+            ->orderBy('attended_at', isset($validated['sort']) ? $validated['sort'] : 'asc')
+            ->paginate(10);
+
+        // assume minimum time is 60 mins
+        $end_time = (new Carbon($occurence->occurence_time))->addMinutes(60);
+
+        $events = EventQueries::getEvents($occurence->occurence_time, $end_time, $occurence->event_id);
+
+        $event = Arr::first($events);
+
+        return response()->json([
+            'event' => $event,
+            'attendances' => $attendances,
+        ]);
+    }
+
+    public function detail(Request $request, string $event_occurence_id, string $id)
+    {
+        $attendance = Attendance::where('event_occurence_id', $event_occurence_id)
+            ->where('id', $id)
+            ->first();
+
+        if (!$attendance) {
+            return response(['message' => 'Attendance not found'], 404);
+        }
+
+        $attendance->load('member');
+
+        return response()->json($attendance);
     }
 }
