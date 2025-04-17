@@ -9,6 +9,7 @@ use App\Queries\EventQueries;
 use Arr;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class AttendanceController extends Controller
 {
@@ -90,7 +91,11 @@ class AttendanceController extends Controller
         $validated = $request->validate([
             'event_occurence_id' => 'numeric|nullable',
             'event_id' => 'required_without:event_occurence_id|numeric',
-            'start_time' => 'required_without:event_occurence_id|date_format:Y-m-d H:i:s'
+            'start_time' => 'required_without:event_occurence_id|date_format:Y-m-d H:i:s',
+            'sort' => [
+                'nullable',
+                Rule::in(['asc', 'desc'])
+            ]
         ]);
 
         $occurence = null;
@@ -110,6 +115,7 @@ class AttendanceController extends Controller
 
         $attendances = Attendance::where('event_occurence_id', $occurence->id)
             ->with('member')
+            ->orderBy('attended_at', isset($validated['sort']) ? $validated['sort'] : 'asc')
             ->paginate(10);
 
         // assume minimum time is 60 mins
