@@ -54,7 +54,7 @@ class EventQueries
             ->where('end_time', '<=', $end_date);
 
         if ($id != 0) {
-            $q_single_events = $q_single_events->where('id', $id);
+            $q_single_events = $q_single_events->where('e.id', $id);
         }
 
         $single_events = $q_single_events->get();

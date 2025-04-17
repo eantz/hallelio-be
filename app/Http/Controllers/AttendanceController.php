@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Attendance;
 use App\Models\EventOccurence;
 use App\Models\Member;
+use App\Queries\EventQueries;
+use Arr;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class AttendanceController extends Controller
@@ -109,10 +112,15 @@ class AttendanceController extends Controller
             ->with('member')
             ->paginate(10);
 
-        $occurence->load('event');
+        // assume minimum time is 60 mins
+        $end_time = (new Carbon($occurence->occurence_time))->addMinutes(60);
+
+        $events = EventQueries::getEvents($occurence->occurence_time, $end_time, $occurence->event_id);
+
+        $event = Arr::first($events);
 
         return response()->json([
-            'event' => $occurence->event,
+            'event' => $event,
             'attendances' => $attendances,
         ]);
     }
