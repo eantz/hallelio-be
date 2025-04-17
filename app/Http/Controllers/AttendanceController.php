@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 
 class AttendanceController extends Controller
 {
-    public function registerAttendance(Request $request)
+    public function register(Request $request)
     {
         $validated = $request->validate([
             'event_occurence_id' => 'required|numeric',
@@ -54,7 +54,35 @@ class AttendanceController extends Controller
         return $attendance;
     }
 
-    public function getAttendances(Request $request)
+    function update(Request $request, string $id)
+    {
+        $validated = $request->validate([
+            'event_occurence_id' => 'required|numeric',
+            'attendance_type' => 'required|string|max:20',
+            'member_id' => 'nullable|string',
+            'guest_name' => 'required_without:member_id|nullable|string|max:255',
+            'attended_at' => 'required|date_format:Y-m-d H:i:s',
+        ]);
+
+        $attendance = Attendance::where('event_occurence_id', $validated['event_occurence_id'])
+            ->where('id', $id)
+            ->first();
+
+        if (!$attendance) {
+            return response(['message' => 'Attendance not found'], 404);
+        }
+
+        $attendance->member_id = $validated['member_id'];
+        $attendance->guest_name = $validated['guest_name'];
+        $attendance->attended_at = $validated['attended_at'];
+        $attendance->save();
+
+        $attendance->load('member');
+
+        return response()->json($attendance);
+    }
+
+    public function list(Request $request)
     {
         $validated = $request->validate([
             'event_occurence_id' => 'numeric|nullable',
@@ -87,5 +115,20 @@ class AttendanceController extends Controller
             'event' => $occurence->event,
             'attendances' => $attendances,
         ]);
+    }
+
+    public function detail(Request $request, string $event_occurence_id, string $id)
+    {
+        $attendance = Attendance::where('event_occurence_id', $event_occurence_id)
+            ->where('id', $id)
+            ->first();
+
+        if (!$attendance) {
+            return response(['message' => 'Attendance not found'], 404);
+        }
+
+        $attendance->load('member');
+
+        return response()->json($attendance);
     }
 }

@@ -43,8 +43,10 @@ Route::prefix('event')->middleware('auth:sanctum')->group(function () {
 });
 
 Route::prefix('attendance')->middleware('auth:sanctum')->group(function () {
-    Route::post('/register', [AttendanceController::class, 'registerAttendance']);
-    Route::get('/list', [AttendanceController::class, 'getAttendances']);
+    Route::post('/register', [AttendanceController::class, 'register']);
+    Route::get('/list', [AttendanceController::class, 'list']);
+    Route::get('/{event_occurence_id}/{id}', [AttendanceController::class, 'detail']);
+    Route::put('/update/{id}', [AttendanceController::class, 'update']);
 });
 
 Route::post('/upload', [UploadController::class, 'upload']);
