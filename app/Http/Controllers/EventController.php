@@ -551,12 +551,19 @@ class EventController extends Controller
     {
 
         $event_occurence = EventOccurence::where('id', $id)
-            ->with(['event'])
             ->first();
 
         if (!$event_occurence) {
             return response(['message' => 'Event Occurence not found'], 404);
         }
+
+        // assume minimum time is 60 mins
+        $end_time = (new Carbon($event_occurence->occurence_time))->addMinutes(60);
+        $events = EventQueries::getEvents($event_occurence->occurence_time, $end_time, $event_occurence->event_id);
+
+        $event = Arr::first($events);
+
+        $event_occurence->event = $event;
 
         return $event_occurence;
     }
